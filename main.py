@@ -1,73 +1,88 @@
-import time
+#чем меньше процентов хп у персонажа тем сильнее его удар, но есть лимит, если
+#меньше 20% хп, то баф снимается. Мы должны считать получаемый урон и сумировать его
+#а потом сравнивать, если урон нанёс 1% от максимального количества хп, то и сила удара
+#поднимается на 1%
 
-
-class Fighter:
-    def __init__(self, name, hp, attack):
+class Fighters:
+    def __init__(self, name, level):
         self.name = name
-        self.hp = hp
-        self.attack = attack
+        self.level = level
+        self.attack = self.base_attack * level
+        self.health_points = self.base_health_points * level
+        
+    def attack_method(self, target: "Fighters"):
+        target.got_damage(damage=self.attack)
+    def add_hp(self):
+        if self.is_alive:
+            self.health_points += self.max_hp / 2
+    def got_damage(self, damage):
+        damage = damage * (100 - self.defence_emth) / 100
+        round_damage = round(damage)
+        self.health_points -= round_damage
+    def berserker(self, target: "Fighters"):
+        pass
+    @property
+    def max_level_control(self):
+        if self.level > 3:
+            self.level = 3
+    def is_alive(self)->bool:
+        return self.health_points > 0
+    def is_alive_str(self)->str:
+        if self.is_alive() == True:
+            return "is alive"
+        return "is dead"
+    @property
+    def defence_emth(self)->int:
+        self.defence = self.base_defence * self.level
+        return self.defence
+    @property
+    def max_hp(self)->int:
+        return self.base_health_points * self.level
+    def hp_precent(self)->int:
+        return 100 * self.health_points / self.max_hp
+    def __str__(self):
+        return f"name ({self.name}) power ({self.attack}), HP ({self.health_points})"
 
+class Ork(Fighters):
+    base_attack = 11
+    base_health_points = 70
+    base_defence = 11
 
-def create_fighter():
-    name = input("Введите имя бойца: ").strip()
+    @property
+    def defence_emth(self)->int:
+        defence = super().defence_emth
+        if self.health_points < 50:
+            defence *= 3
+        return defence
 
-    while not name:
-        name = input("Имя не должно быть пустым. Введите имя: ").strip()
+ork = Ork(name="Ork", level=1)
 
-    hp = int(input("HP: "))
-    attack = int(input("Сила удара: "))
+class Nord(Fighters):
+    base_attack = 16
+    base_health_points = 100
+    base_defence = 10
+    
+    def attack_method(self, target: "Fighters"):
+        attack = self.attack
+        if target.hp_precent() < 30:
+            attack = self.attack * 2
+        target.got_damage(damage=attack)
 
-    return Fighter(name, hp, attack)
+nord = Nord(name="Nord", level=1)
 
+def Fight(character1: Fighters, character2: Fighters):
+    while character1.is_alive() and character2.is_alive():
+        character2.attack_method(target=character1)
+        if character1.is_alive() == False:
+            character2.level += 1
+            character2.add_hp()
+        elif character1.is_alive():
+            character1.attack_method(target=character2)
+        elif character2.is_alive() == False:
+            character1.level += 1
+            character1.add_hp()
 
-def show_players(players):
-    print("\nСписок бойцов:")
+    print(f"{character2.name} {character2.is_alive_str()}, {character2.name}(level: {character2.level}, hp: {character2.health_points})")
+    print(f"{character1.name} {character1.is_alive_str()}, {character1.name}(level: {character1.level}, hp: {character1.health_points})")
 
-    for i, player in enumerate(players, start=1):
-        print(f"{i}. {player.name} — HP: {player.hp}")
-
-
-def fight(a, b):
-    round_number = 1
-
-    print(f"\nНачинается бой: {a.name} против {b.name}!")
-
-    while a.hp > 0 and b.hp > 0:
-        print(f"\nРаунд {round_number}")
-        damage_a = a.attack
-        damage_b = b.attack
-
-        a.hp = max(0, a.hp - damage_b)
-        b.hp = max(0, b.hp - damage_a)
-
-        print(f"{a.name} получает удар. Осталось HP: {a.hp}")
-        print(f"{b.name} получает удар. Осталось HP: {b.hp}")
-
-        round_number += 1
-        time.sleep(1)
-
-    if a.hp == 0 and b.hp == 0:
-        print("\nНичья! Оба бойца проиграли.")
-    elif a.hp > 0:
-        print(f"\n{a.name} победил!")
-    else:
-        print(f"\n{b.name} победил!")
-
-
-def remove_dead(players):
-    return [player for player in players if player.hp > 0]
-
-
-players = []
-
-for i in range(2):
-    print(f"\nСоздание бойца {i + 1}")
-    players.append(create_fighter())
-
-show_players(players)
-fight(players[0], players[1])
-
-players = remove_dead(players)
-
-print("\nПосле боя:")
-show_players(players)
+Fight(nord, ork)
